@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block titre %}Publier{% endblock %}
+{% block en_tete %}Publier un bien{% endblock %}
+
+{% block contenu %}
+<div class="px-4 py-4 space-y-4">
+  {% if messages %}
+    <div class="space-y-2">
+      {% for message in messages %}
+        <div class="rounded border border-white/10 bg-white/5 p-3 text-sm {% if message.tags == 'error' %}text-red-300{% else %}text-white/70{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-3">
+    {% csrf_token %}
+
+    <div>
+      <label class="block text-sm text-white/80">Vidéo</label>
+      <input name="video" type="file" class="w-full mt-1" required />
+      {% if formulaire_publication.errors.video %}
+        <div class="text-red-300 text-sm">{{ formulaire_publication.errors.video }}</div>
+      {% endif %}
+    </div>
+
+    <div>
+      <label class="block text-sm text-white/80">Titre</label>
+      <input name="titre" value="{{ formulaire_publication.data.titre|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" required />
+    </div>
+
+    <div>
+      <label class="block text-sm text-white/80">Description</label>
+      <textarea name="description" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" rows="4">{{ formulaire_publication.data.description|default:'' }}</textarea>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm text-white/80">Statut</label>
+        <select name="statut_transaction" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" required>
+          {% for valeur, libelle in formulaire_publication.fields.statut_transaction.choices %}
+            <option value="{{ valeur }}" {% if formulaire_publication.data.statut_transaction == valeur %}selected{% endif %}>{{ libelle }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Prix</label>
+        <input name="prix" value="{{ formulaire_publication.data.prix|default:'' }}" type="number" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" required />
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <input id="est_disponible" name="est_disponible" type="checkbox" class="accent-white" {% if formulaire_publication.data.est_disponible %}checked{% endif %} />
+      <label for="est_disponible" class="text-sm text-white/80">Disponible</label>
+    </div>
+
+    <div class="rounded border border-white/10 bg-white/5 p-3">
+      <div class="font-semibold mb-2">Adresse</div>
+      <div class="grid grid-cols-2 gap-3">
+        <input name="avenue" value="{{ formulaire_adresse.data.avenue|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Avenue" required />
+        <input name="numero" value="{{ formulaire_adresse.data.numero|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Numéro" required />
+        <input name="quartier" value="{{ formulaire_adresse.data.quartier|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Quartier" required />
+        <input name="commune" value="{{ formulaire_adresse.data.commune|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Commune" required />
+        <input name="niveau" value="{{ formulaire_adresse.data.niveau|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Niveau" required />
+        <input name="code_appartement" value="{{ formulaire_adresse.data.code_appartement|default:'' }}" class="px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Code appartement" required />
+      </div>
+      {% if formulaire_adresse.errors %}
+        <div class="text-red-300 text-sm pt-2">{{ formulaire_adresse.errors }}</div>
+      {% endif %}
+    </div>
+
+    <button class="w-full py-3 rounded bg-white text-black font-semibold">Publier</button>
+  </form>
+</div>
+{% endblock %}

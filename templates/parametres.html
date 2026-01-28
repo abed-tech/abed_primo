@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+
+{% block titre %}Paramètres{% endblock %}
+{% block en_tete %}Paramètres{% endblock %}
+
+{% block contenu %}
+<div id="overlay_parametres" class="fixed inset-0 z-50 bg-black/90 backdrop-blur">
+  <div class="max-w-md mx-auto h-dvh flex flex-col">
+    <div class="px-4 py-3 flex items-center justify-between border-b border-white/10">
+      <div class="font-semibold">Paramètres</div>
+      <a class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" href="{% url 'profil' %}" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </a>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">Compte</div>
+        <div class="text-sm text-white/70">Nom d'utilisateur : @{{ request.user.nom_utilisateur }} (lecture seule)</div>
+
+        <div class="pt-4 flex items-center gap-3">
+          <div class="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex items-center justify-center">
+            {% if request.user.photo %}
+              <img class="w-full h-full object-cover" src="{{ request.user.photo.url }}" alt="" />
+            {% else %}
+              <i data-lucide="user" class="w-6 h-6 text-white/60"></i>
+            {% endif %}
+          </div>
+          <form id="formulaire_photo_profil" method="post" action="{% url 'modifier_photo_profil' %}" enctype="multipart/form-data" class="flex-1">
+            {% csrf_token %}
+            <input id="champ_photo_profil" type="file" name="photo" accept="image/*" class="hidden" />
+            <button id="bouton_choisir_photo" type="button" class="w-full py-3 rounded border border-white/20">Modifier la photo</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">Publications</div>
+        <div class="text-sm text-white/70">(à connecter : liste, statut, archivage, suppression)</div>
+      </div>
+
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">Notifications</div>
+        <div class="text-sm text-white/70">(à connecter : messages, réponses, nouveaux contacts, sons/vibrations)</div>
+      </div>
+
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">Confidentialité</div>
+        <div class="text-sm text-white/70">(à connecter : qui peut écrire, voir mes publications, blocage, signalements)</div>
+      </div>
+
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">Aide & Support</div>
+        <div class="text-sm text-white/70">(à connecter : signaler problème, FAQ, contacter support)</div>
+      </div>
+
+      <div class="rounded border border-white/10 bg-white/5 p-4">
+        <div class="font-semibold mb-2">À propos</div>
+        <div class="text-sm text-white/70">Version, conditions, politique, mentions légales</div>
+      </div>
+
+      <form method="post" action="{% url 'deconnexion' %}">
+        {% csrf_token %}
+        <button class="w-full py-3 rounded bg-white text-black font-semibold">Déconnexion</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('overlay_parametres');
+    if (!overlay) return;
+
+    const boutonChoisir = document.getElementById('bouton_choisir_photo');
+    const champPhoto = document.getElementById('champ_photo_profil');
+    const formulairePhoto = document.getElementById('formulaire_photo_profil');
+    if (boutonChoisir && champPhoto && formulairePhoto) {
+      boutonChoisir.addEventListener('click', () => champPhoto.click());
+      champPhoto.addEventListener('change', () => {
+        if (champPhoto.files && champPhoto.files[0]) {
+          formulairePhoto.submit();
+        }
+      });
+    }
+
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (y) => {
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (y) => {
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+      const seuil = 60;
+      if (duree > 800) return;
+      if (deltaY > seuil) {
+        window.location.href = `{% url 'profil' %}`;
+      }
+    };
+
+    overlay.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientY);
+    }, { passive: true });
+
+    overlay.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientY);
+    }, { passive: true });
+
+    overlay.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientY);
+    });
+
+    overlay.addEventListener('mouseup', (e) => {
+      gererFin(e.clientY);
+    });
+  });
+</script>
+{% endblock %}

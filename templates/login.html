@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block titre %}Connexion{% endblock %}
+{% block en_tete %}Connexion{% endblock %}
+
+{% block contenu %}
+<div class="px-4 py-6">
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+    {% if next %}<input type="hidden" name="next" value="{{ next }}" />{% endif %}
+    <div>
+      <label class="block text-sm text-white/80">Nom d'utilisateur</label>
+      <input name="nom_utilisateur" value="{{ formulaire.data.nom_utilisateur|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+    </div>
+    <div>
+      <label class="block text-sm text-white/80">Mot de passe</label>
+      <input type="password" name="mot_de_passe" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+    </div>
+
+    {% if formulaire.non_field_errors %}
+      <div class="text-red-300 text-sm">{{ formulaire.non_field_errors }}</div>
+    {% endif %}
+
+    <button class="w-full py-3 rounded bg-white text-black font-semibold">Se connecter</button>
+  </form>
+
+  <div class="pt-6 text-center text-sm text-white/70">
+    Pas de compte ? <a class="underline" href="{% url 'inscription' %}">S'inscrire</a>
+  </div>
+</div>
+{% endblock %}

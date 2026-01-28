@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block titre %}Nouveau message{% endblock %}
+{% block en_tete %}Nouveau message{% endblock %}
+
+{% block contenu %}
+<div id="conteneur_nouveau_message" class="px-4 py-4 space-y-3 pb-20" data-identifiant-conversation="{{ conversation.id }}">
+  <div class="rounded border border-white/10 bg-white/5 p-3">
+    <div class="text-sm text-white/70">Publication</div>
+    <div class="font-semibold">{{ publication.titre }}</div>
+    <div class="text-sm text-white/70">@{{ publication.proprietaire.nom_utilisateur }}</div>
+  </div>
+
+  <form id="formulaire_nouveau_message" method="post" enctype="multipart/form-data" class="fixed bottom-14 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-4">
+    {% csrf_token %}
+    <div class="rounded-2xl border border-white/10 bg-black/90 backdrop-blur p-2 flex items-end gap-2">
+      <input id="fichier_message" type="file" name="fichier" class="hidden" />
+      <button id="bouton_fichier" type="button" class="px-2 py-2 rounded-xl bg-white/10 text-white/80 hover:text-white transition active:scale-95" aria-label="Fichiers">
+        <i data-lucide="plus" class="w-5 h-5"></i>
+      </button>
+      <textarea id="zone_texte_message" name="contenu" rows="1" class="flex-1 resize-none bg-transparent outline-none px-2 py-2 max-h-40" placeholder="Écrire un message..."></textarea>
+      <button id="bouton_envoyer" class="px-3 py-2 rounded-xl bg-white text-black font-semibold flex items-center justify-center" type="submit" aria-label="Envoyer">
+        <i data-lucide="mic" class="w-5 h-5"></i>
+      </button>
+    </div>
+    {% if formulaire.non_field_errors %}
+      <div class="pt-2 text-sm text-red-300">{{ formulaire.non_field_errors }}</div>
+    {% endif %}
+    <div id="erreur_nouveau_message" class="pt-2 text-sm text-red-300 hidden"></div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const lienMessages = document.getElementById('lien_navigation_messages');
+    if (lienMessages) lienMessages.classList.add('bg-white/10');
+
+    const bouton = document.getElementById('bouton_fichier');
+    const fichier = document.getElementById('fichier_message');
+    if (bouton && fichier) {
+      bouton.addEventListener('click', () => fichier.click());
+    }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_nouveau_message');
+    const formulaire = document.getElementById('formulaire_nouveau_message');
+    const zone = document.getElementById('zone_texte_message');
+    const boutonEnvoyer = document.getElementById('bouton_envoyer');
+    const fichier = document.getElementById('fichier_message');
+    const erreur = document.getElementById('erreur_nouveau_message');
+
+    if (!conteneur || !formulaire || !zone || !boutonEnvoyer) return;
+
+    const identifiantConversation = conteneur.dataset.identifiantConversation;
+    if (!identifiantConversation) return;
+
+    let enregistrement = null;
+    let mediaRecorder = null;
+
+    const rafraichirBouton = () => {
+      const texte = (zone.value || '').trim();
+      const nomIcone = texte.length ? 'send' : (enregistrement ? 'square' : 'mic');
+      if (typeof remplacerIconeLucide === 'function') {
+        remplacerIconeLucide(boutonEnvoyer, nomIcone);
+      }
+    };
+
+    zone.addEventListener('input', rafraichirBouton);
+    rafraichirBouton();
+
+    const envoyerFormData = async (formData) => {
+      const jeton = (formulaire.querySelector('input[name=csrfmiddlewaretoken]') || {}).value;
+      try {
+        if (erreur) erreur.classList.add('hidden');
+        const reponse = await fetch(`{% url 'api_envoyer_message' identifiant_conversation=0 %}`.replace('/0/', `/${identifiantConversation}/`), {
+          method: 'POST',
+          headers: { 'X-CSRFToken': jeton },
+          body: formData,
+        });
+        if (!reponse.ok) {
+          if (erreur) {
+            erreur.textContent = 'Impossible d\'envoyer le message.';
+            erreur.classList.remove('hidden');
+          }
+          return;
+        }
+        window.location.href = `{% url 'messages_prives' identifiant_conversation=0 %}`.replace('/0/', `/${identifiantConversation}/`);
+      } catch (e) {
+        if (erreur) {
+          erreur.textContent = 'Erreur réseau.';
+          erreur.classList.remove('hidden');
+        }
+      }
+    };
+
+    const envoyerTexteOuFichier = async () => {
+      const texte = (zone.value || '').trim();
+      const formData = new FormData();
+      if (texte.length) formData.append('contenu', texte);
+      if (fichier && fichier.files && fichier.files[0]) formData.append('fichier', fichier.files[0]);
+      await envoyerFormData(formData);
+    };
+
+    const demarrerVocal = async () => {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const morceaux = [];
+      mediaRecorder = new MediaRecorder(flux);
+      mediaRecorder.addEventListener('dataavailable', (e) => {
+        if (e.data && e.data.size) morceaux.push(e.data);
+      });
+      mediaRecorder.addEventListener('stop', async () => {
+        const blob = new Blob(morceaux, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const fichierVocal = new File([blob], 'vocal.webm', { type: blob.type });
+        const formData = new FormData();
+        formData.append('vocal', fichierVocal);
+        await envoyerFormData(formData);
+        flux.getTracks().forEach((t) => t.stop());
+      });
+      mediaRecorder.start();
+      enregistrement = Date.now();
+      rafraichirBouton();
+    };
+
+    const arreterVocal = async () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      enregistrement = null;
+      rafraichirBouton();
+    };
+
+    formulaire.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const texte = (zone.value || '').trim();
+      const aFichier = fichier && fichier.files && fichier.files[0];
+      if (!texte.length && !aFichier) {
+        if (enregistrement) {
+          await arreterVocal();
+          return;
+        }
+        await demarrerVocal();
+        return;
+      }
+      await envoyerTexteOuFichier();
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_nouveau_message');
+    if (!conteneur) return;
+
+    let xDepart = 0;
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (x, y) => {
+      xDepart = x;
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (x, y) => {
+      const deltaX = x - xDepart;
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+
+      const seuil = 50;
+      const estHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (duree > 800) return;
+
+      if (estHorizontal && Math.abs(deltaX) > seuil) {
+        if (deltaX < 0) {
+          window.location.href = `{% url 'details_publication' identifiant=publication.id %}`;
+        }
+      }
+    };
+
+    conteneur.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientX, e.clientY);
+    });
+
+    conteneur.addEventListener('mouseup', (e) => {
+      gererFin(e.clientX, e.clientY);
+    });
+  });
+</script>
+{% endblock %}

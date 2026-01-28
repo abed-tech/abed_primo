@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block titre %}Profil{% endblock %}
+{% block en_tete %}Profil{% endblock %}
+
+{% block contenu %}
+<div class="px-4 py-4 space-y-4">
+  <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-14 h-14 rounded-full bg-white/10 overflow-hidden flex items-center justify-center">
+          {% if request.user.photo %}
+            <img class="w-full h-full object-cover" src="{{ request.user.photo.url }}" alt="" />
+          {% else %}
+            <i data-lucide="user" class="w-7 h-7 text-white/60"></i>
+          {% endif %}
+        </div>
+        <div>
+          <div class="text-lg font-semibold">{{ request.user.prenom }} {{ request.user.nom }}</div>
+          <div class="text-sm text-white/70">@{{ request.user.nom_utilisateur }}</div>
+        </div>
+      </div>
+      <a class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" href="{% url 'parametres' %}" aria-label="Paramètres">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </a>
+    </div>
+
+    <div class="pt-4 grid grid-cols-3 gap-3 text-center">
+      <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+        <div class="text-lg font-semibold">{{ stats.nombre_publications|default:0 }}</div>
+        <div class="text-xs text-white/70">Publications</div>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+        <div class="text-lg font-semibold">{{ stats.nombre_conversations|default:0 }}</div>
+        <div class="text-xs text-white/70">Conversations</div>
+      </div>
+      <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+        <div class="text-lg font-semibold">{{ stats.nombre_messages_non_lus|default:0 }}</div>
+        <div class="text-xs text-white/70">Non lus</div>
+      </div>
+    </div>
+
+    <div class="pt-4 grid grid-cols-3 gap-3">
+      <a class="py-3 rounded-xl bg-white text-black font-semibold text-center" href="{% url 'publier_bien' %}">Publier</a>
+      <a class="py-3 rounded-xl border border-white/20 text-center" href="{% url 'liste_messages' %}">Messages</a>
+      <a class="py-3 rounded-xl border border-white/20 text-center" href="{% url 'parametres' %}">Paramètres</a>
+    </div>
+  </div>
+
+  <div class="space-y-2">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Mes publications</div>
+      <div class="text-xs text-white/60">{{ stats.nombre_publications|default:0 }}</div>
+    </div>
+
+    <div class="space-y-3">
+      {% for publication in publications %}
+        <a href="{% url 'details_publication' identifiant=publication.id %}" class="block rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="relative h-36 bg-black">
+            {% if publication.video %}
+              <video class="w-full h-full object-cover" src="{{ publication.video.url }}" muted playsinline preload="metadata"></video>
+            {% endif %}
+            <div class="absolute top-2 left-2 flex gap-2">
+              <span class="px-2 py-1 rounded bg-white text-black text-xs font-semibold">{{ publication.get_statut_transaction_display }}</span>
+              <span class="px-2 py-1 rounded bg-white/10 text-white text-xs">{% if publication.est_disponible %}Disponible{% else %}Non disponible{% endif %}</span>
+            </div>
+          </div>
+          <div class="p-3">
+            <div class="font-semibold">{{ publication.titre }}</div>
+            <div class="text-sm text-white/70">{{ publication.prix }} FC</div>
+            <div class="text-xs text-white/60">{{ publication.adresse.quartier }}, {{ publication.adresse.commune }}</div>
+          </div>
+        </a>
+      {% empty %}
+        <div class="text-white/60 text-sm">Aucune publication.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const lienProfil = document.getElementById('lien_navigation_profil');
+    if (lienProfil) lienProfil.classList.add('bg-white/10');
+  });
+</script>
+{% endblock %}

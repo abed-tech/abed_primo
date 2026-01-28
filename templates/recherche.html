@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block titre %}Recherche{% endblock %}
+{% block en_tete %}Recherche{% endblock %}
+
+{% block contenu %}
+<div class="px-4 py-4 space-y-4">
+  <form class="space-y-3" method="get" action="{% url 'recherche' %}">
+    <div>
+      <label class="block text-sm text-white/80">Quartier</label>
+      <input name="quartier" value="{{ valeurs.quartier|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Ex: Gombe" />
+    </div>
+    <div>
+      <label class="block text-sm text-white/80">Commune</label>
+      <input name="commune" value="{{ valeurs.commune|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" placeholder="Ex: Gombe" />
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm text-white/80">Prix min</label>
+        <input name="prix_min" value="{{ valeurs.prix_min|default:'' }}" type="number" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Prix max</label>
+        <input name="prix_max" value="{{ valeurs.prix_max|default:'' }}" type="number" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm text-white/80">Trier</label>
+      <select name="tri" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10">
+        <option value="recent" {% if valeurs.tri == 'recent' or not valeurs.tri %}selected{% endif %}>Les plus récentes</option>
+        <option value="prix_asc" {% if valeurs.tri == 'prix_asc' %}selected{% endif %}>Prix croissant</option>
+        <option value="prix_desc" {% if valeurs.tri == 'prix_desc' %}selected{% endif %}>Prix décroissant</option>
+      </select>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="block text-sm text-white/80">Transaction</label>
+        <select name="statut_transaction" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10">
+          <option value="" {% if not valeurs.statut_transaction %}selected{% endif %}>Toutes</option>
+          <option value="A_LOUER" {% if valeurs.statut_transaction == 'A_LOUER' %}selected{% endif %}>À louer</option>
+          <option value="A_VENDRE" {% if valeurs.statut_transaction == 'A_VENDRE' %}selected{% endif %}>À vendre</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Disponibilité</label>
+        <select name="disponibilite" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10">
+          <option value="" {% if valeurs.disponibilite == '' or not valeurs.disponibilite %}selected{% endif %}>Toutes</option>
+          <option value="1" {% if valeurs.disponibilite == '1' %}selected{% endif %}>Disponible</option>
+          <option value="0" {% if valeurs.disponibilite == '0' %}selected{% endif %}>Non disponible</option>
+        </select>
+      </div>
+    </div>
+
+    <button class="w-full py-3 rounded bg-white text-black font-semibold">Rechercher</button>
+  </form>
+
+  <div class="space-y-3">
+    {% for publication in publications %}
+      <a class="block rounded-xl border border-white/10 bg-white/5 p-4" href="{% url 'details_publication' identifiant=publication.id %}">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-semibold">{{ publication.titre }}</div>
+            <div class="text-sm text-white/70">{{ publication.prix }} FC • {{ publication.get_statut_transaction_display }}</div>
+            <div class="text-xs text-white/60">{{ publication.adresse.quartier }}, {{ publication.adresse.commune }}</div>
+            <div class="text-xs text-white/60">@{{ publication.proprietaire.nom_utilisateur }}</div>
+          </div>
+          <div class="text-xs px-2 py-1 rounded bg-white/10">{% if publication.est_disponible %}Disponible{% else %}Non disponible{% endif %}</div>
+        </div>
+      </a>
+    {% empty %}
+      <div class="text-white/60">Aucune publication trouvée.</div>
+    {% endfor %}
+  </div>
+
+  {% if page_objet and page_objet.paginator.num_pages > 1 %}
+    <div class="pt-3 flex items-center justify-between">
+      {% if page_objet.has_previous %}
+        <a class="px-3 py-2 rounded border border-white/20" href="?{% if parametres_sans_page %}{{ parametres_sans_page }}&{% endif %}page={{ page_objet.previous_page_number }}">Précédent</a>
+      {% else %}
+        <div class="px-3 py-2 rounded border border-white/10 text-white/40">Précédent</div>
+      {% endif %}
+
+      <div class="text-sm text-white/70">Page {{ page_objet.number }} / {{ page_objet.paginator.num_pages }}</div>
+
+      {% if page_objet.has_next %}
+        <a class="px-3 py-2 rounded border border-white/20" href="?{% if parametres_sans_page %}{{ parametres_sans_page }}&{% endif %}page={{ page_objet.next_page_number }}">Suivant</a>
+      {% else %}
+        <div class="px-3 py-2 rounded border border-white/10 text-white/40">Suivant</div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

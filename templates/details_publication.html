@@ -1,0 +1,251 @@
+{% extends 'base.html' %}
+
+{% block titre %}Détails{% endblock %}
+{% block en_tete %}Détails{% endblock %}
+
+{% block contenu %}
+<div id="conteneur_details" class="pb-20">
+  <div class="aspect-[9/16] bg-black">
+    {% if publication.video %}
+      <video class="w-full h-full object-cover" src="{{ publication.video.url }}" controls playsinline></video>
+    {% else %}
+      <div class="w-full h-full flex items-center justify-center text-white/50">Aucune vidéo</div>
+    {% endif %}
+  </div>
+
+  <div class="px-4 py-4 space-y-3">
+    <div class="flex items-start justify-between gap-3">
+      <div>
+        <div class="text-lg font-semibold">{{ publication.titre }}</div>
+        <div class="text-white/70">{{ publication.prix }} FC</div>
+      </div>
+      <div class="text-right space-y-1">
+        <div class="inline-flex px-2 py-1 rounded bg-white text-black text-xs font-semibold">{{ publication.get_statut_transaction_display }}</div>
+        <div class="text-xs text-white/70">{% if publication.est_disponible %}Disponible{% else %}Non disponible{% endif %}</div>
+      </div>
+    </div>
+
+    <div class="text-sm text-white/80">{{ publication.description }}</div>
+
+    <div class="rounded border border-white/10 bg-white/5 p-3 text-sm">
+      <div class="flex items-center justify-between gap-3">
+        <div class="font-semibold mb-1">Adresse</div>
+        <a
+          class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"
+          target="_blank"
+          rel="noopener noreferrer"
+          href="https://www.google.com/maps/search/?api=1&query={{ publication.adresse|urlencode }}"
+          aria-label="Ouvrir l'adresse dans Google Maps"
+        >
+          <i data-lucide="map-pin" class="w-5 h-5 text-white/80"></i>
+        </a>
+      </div>
+      <div class="text-white/80">{{ publication.adresse }}</div>
+    </div>
+
+    <div class="rounded border border-white/10 bg-white/5 p-3">
+      <div class="font-semibold mb-2">Carte</div>
+      <div class="aspect-[16/9] rounded overflow-hidden border border-white/10 bg-black">
+        <iframe
+          class="w-full h-full"
+          loading="lazy"
+          referrerpolicy="no-referrer-when-downgrade"
+          src="https://www.google.com/maps?q={{ publication.adresse|urlencode }}&output=embed"
+        ></iframe>
+      </div>
+      <a class="block mt-3 text-sm underline text-white/80" target="_blank" rel="noopener noreferrer" href="https://www.google.com/maps/search/?api=1&query={{ publication.adresse|urlencode }}">Ouvrir dans Google Maps</a>
+    </div>
+
+    <div class="rounded border border-white/10 bg-white/5 p-3 flex items-center justify-between">
+      <div>
+        <div class="font-semibold">Propriétaire</div>
+        <div class="text-sm text-white/70">@{{ publication.proprietaire.nom_utilisateur }}</div>
+      </div>
+      {% if request.user.is_authenticated %}
+        <a class="px-3 py-2 rounded bg-white text-black font-semibold" href="{% url 'nouveau_message' identifiant_publication=publication.id %}">Message</a>
+      {% else %}
+        <a class="px-3 py-2 rounded bg-white text-black font-semibold" href="{% url 'connexion' %}?next={% url 'nouveau_message' identifiant_publication=publication.id %}">Se connecter</a>
+      {% endif %}
+    </div>
+
+    <div class="flex gap-3">
+      <button id="bouton_partager_details" class="flex-1 py-3 rounded border border-white/20" type="button">Partager</button>
+      <button id="bouton_signaler_details" class="flex-1 py-3 rounded border border-white/20" type="button">Signaler</button>
+    </div>
+  </div>
+</div>
+
+<div id="modale_partager" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/70" data-fermer="1"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl border border-white/10 bg-black p-4">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Partager</div>
+      <button class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" type="button" data-fermer="1" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="pt-3 space-y-3">
+      <div class="text-sm text-white/70">Lien</div>
+      <input id="champ_lien_partage" class="w-full px-3 py-2 rounded bg-white/10 border border-white/10" readonly value="{{ request.build_absolute_uri }}" />
+      <button id="bouton_copier_lien" class="w-full py-3 rounded bg-white text-black font-semibold" type="button">Copier le lien</button>
+      <button id="bouton_partager_natif" class="w-full py-3 rounded border border-white/20" type="button">Partager</button>
+      <div id="etat_partage" class="text-sm text-white/70"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modale_signaler" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/70" data-fermer="1"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl border border-white/10 bg-black p-4">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Signaler</div>
+      <button class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" type="button" data-fermer="1" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    {% if request.user.is_authenticated %}
+      <form method="post" action="{% url 'signaler_publication' identifiant=publication.id %}" class="pt-3 space-y-3">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm text-white/80">Motif</label>
+          <select name="motif" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" required>
+            <option value="Contenu inapproprié">Contenu inapproprié</option>
+            <option value="Fausse annonce">Fausse annonce</option>
+            <option value="Arnaque">Arnaque</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm text-white/80">Description (optionnel)</label>
+          <textarea name="description" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" rows="4"></textarea>
+        </div>
+        <button class="w-full py-3 rounded bg-white text-black font-semibold" type="submit">Envoyer</button>
+      </form>
+    {% else %}
+      <div class="pt-3 space-y-3">
+        <div class="text-sm text-white/70">Connecte-toi pour signaler une annonce.</div>
+        <a class="block w-full py-3 rounded bg-white text-black font-semibold text-center" href="{% url 'connexion' %}?next={% url 'details_publication' identifiant=publication.id %}">Se connecter</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_details');
+    if (!conteneur) return;
+
+    let xDepart = 0;
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (x, y) => {
+      xDepart = x;
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (x, y) => {
+      const deltaX = x - xDepart;
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+
+      const seuil = 50;
+      const estHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (duree > 800) return;
+
+      if (estHorizontal && Math.abs(deltaX) > seuil) {
+        if (deltaX < 0) {
+          window.location.href = `{% url 'feed' %}`;
+        }
+      }
+    };
+
+    conteneur.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientX, e.clientY);
+    });
+
+    conteneur.addEventListener('mouseup', (e) => {
+      gererFin(e.clientX, e.clientY);
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modalePartager = document.getElementById('modale_partager');
+    const modaleSignaler = document.getElementById('modale_signaler');
+    const boutonPartager = document.getElementById('bouton_partager_details');
+    const boutonSignaler = document.getElementById('bouton_signaler_details');
+
+    const champLien = document.getElementById('champ_lien_partage');
+    const boutonCopier = document.getElementById('bouton_copier_lien');
+    const boutonPartagerNatif = document.getElementById('bouton_partager_natif');
+    const etat = document.getElementById('etat_partage');
+
+    const ouvrir = (modale) => {
+      if (!modale) return;
+      modale.classList.remove('hidden');
+    };
+
+    const fermer = (modale) => {
+      if (!modale) return;
+      modale.classList.add('hidden');
+    };
+
+    const activerFermeture = (modale) => {
+      if (!modale) return;
+      modale.querySelectorAll('[data-fermer="1"]').forEach((el) => {
+        el.addEventListener('click', () => fermer(modale));
+      });
+    };
+
+    activerFermeture(modalePartager);
+    activerFermeture(modaleSignaler);
+
+    if (boutonPartager) boutonPartager.addEventListener('click', () => ouvrir(modalePartager));
+    if (boutonSignaler) boutonSignaler.addEventListener('click', () => ouvrir(modaleSignaler));
+
+    if (boutonCopier && champLien) {
+      boutonCopier.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(champLien.value);
+          if (etat) etat.textContent = 'Lien copié.';
+        } catch (e) {
+          if (etat) etat.textContent = 'Impossible de copier le lien.';
+        }
+      });
+    }
+
+    if (boutonPartagerNatif && champLien) {
+      boutonPartagerNatif.addEventListener('click', async () => {
+        const url = champLien.value;
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: document.title, url });
+            if (etat) etat.textContent = 'Partage envoyé.';
+          } else {
+            await navigator.clipboard.writeText(url);
+            if (etat) etat.textContent = 'Lien copié (partage non disponible).';
+          }
+        } catch (e) {
+          if (etat) etat.textContent = 'Partage annulé.';
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

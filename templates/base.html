@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titre %}Aabo{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-black text-white min-h-dvh">
+  <div class="max-w-md mx-auto min-h-dvh flex flex-col">
+    <header class="sticky top-0 z-40 bg-black/80 backdrop-blur border-b border-white/10">
+      <div class="px-4 py-3 flex items-center justify-between">
+        <div class="font-semibold">{% block en_tete %}Aabo{% endblock %}</div>
+        <div class="text-sm text-white/70">
+          {% if request.user.is_authenticated %}
+            @{{ request.user.nom_utilisateur }}
+          {% else %}
+            <a class="underline" href="{% url 'connexion' %}">Connexion</a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div id="toasts" class="fixed left-1/2 -translate-x-1/2 top-16 z-[60] w-full max-w-md px-4 space-y-2">
+        {% for message in messages %}
+          <div class="rounded-xl border border-white/10 bg-black/90 backdrop-blur px-4 py-3 text-sm {% if message.tags == 'error' %}text-red-300{% elif message.tags == 'success' %}text-green-300{% else %}text-white/80{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      </div>
+      <script>
+        document.addEventListener('DOMContentLoaded', () => {
+          const bloc = document.getElementById('toasts');
+          if (!bloc) return;
+          window.setTimeout(() => {
+            bloc.classList.add('hidden');
+          }, 2800);
+        });
+      </script>
+    {% endif %}
+
+    <main class="flex-1 relative">
+      {% block contenu %}{% endblock %}
+    </main>
+
+    <nav class="sticky bottom-0 z-40 bg-black/90 backdrop-blur border-t border-white/10">
+      <div class="grid grid-cols-5 text-center">
+        <a id="lien_navigation_feed" class="py-3 flex items-center justify-center text-white/60 hover:text-white transition" href="{% url 'feed' %}" aria-label="Feed">
+          <i data-lucide="home" class="w-6 h-6"></i>
+        </a>
+        <a id="lien_navigation_recherche" class="py-3 flex items-center justify-center text-white/60 hover:text-white transition" href="{% url 'recherche' %}" aria-label="Recherche">
+          <i data-lucide="search" class="w-6 h-6"></i>
+        </a>
+        <a id="lien_navigation_publier" class="py-3 flex items-center justify-center text-white/60 hover:text-white transition" href="{% url 'publier_bien' %}" aria-label="Publier">
+          <i data-lucide="plus-circle" class="w-6 h-6"></i>
+        </a>
+        <a id="lien_navigation_messages" class="py-3 relative flex items-center justify-center text-white/60 hover:text-white transition" href="{% url 'liste_messages' %}" aria-label="Messagerie">
+          <i data-lucide="message-circle" class="w-6 h-6"></i>
+          <span id="badge_messages_non_lus" class="hidden absolute top-1 right-3 min-w-5 h-5 px-1 rounded-full bg-blue-500 text-white text-[11px] leading-5">0</span>
+        </a>
+        <a id="lien_navigation_profil" class="py-3 flex items-center justify-center text-white/60 hover:text-white transition" href="{% url 'profil' %}" aria-label="Profil">
+          <i data-lucide="user" class="w-6 h-6"></i>
+        </a>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    function remplacerIconeLucide(element, nomIcone, classesSupplementaires) {
+      if (!element) return;
+      const classes = classesSupplementaires ? ` ${classesSupplementaires}` : '';
+      element.innerHTML = `<i data-lucide="${nomIcone}" class="w-5 h-5${classes}"></i>`;
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
+
+    function activerZoneTexteDynamique(identifiantZoneTexte, identifiantBouton) {
+      const zoneTexte = document.getElementById(identifiantZoneTexte);
+      const bouton = document.getElementById(identifiantBouton);
+      if (!zoneTexte) return;
+
+      const recalculer = () => {
+        zoneTexte.style.height = 'auto';
+        zoneTexte.style.height = zoneTexte.scrollHeight + 'px';
+
+        if (bouton) {
+          const valeur = (zoneTexte.value || '').trim();
+          remplacerIconeLucide(bouton, valeur.length ? 'send' : 'mic');
+        }
+      };
+
+      zoneTexte.addEventListener('input', recalculer);
+      recalculer();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      activerZoneTexteDynamique('zone_texte_message', 'bouton_envoyer');
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const badge_messages_non_lus = document.getElementById('badge_messages_non_lus');
+      if (!badge_messages_non_lus) return;
+
+      const est_authentifie = "{{ request.user.is_authenticated|yesno:'true,false' }}" === 'true';
+      let identifiant_intervalle_badge = null;
+
+      const rafraichir_badge_messages = async () => {
+        try {
+          const reponse_http = await fetch('{% url "api_liste_conversations" %}', { headers: { 'Accept': 'application/json' } });
+          if (!reponse_http.ok) return;
+
+          const type_contenu = (reponse_http.headers.get('content-type') || '').toLowerCase();
+          if (!type_contenu.includes('application/json')) return;
+
+          const donnees_json = await reponse_http.json();
+          const conversations = (donnees_json && donnees_json.conversations) ? donnees_json.conversations : [];
+          const nombre_total_non_lus = conversations.reduce((acc, c) => acc + (c.nombre_non_lus || 0), 0);
+
+          if (nombre_total_non_lus > 0) {
+            badge_messages_non_lus.textContent = nombre_total_non_lus;
+            badge_messages_non_lus.classList.remove('hidden');
+          } else {
+            badge_messages_non_lus.textContent = '0';
+            badge_messages_non_lus.classList.add('hidden');
+          }
+        } catch (e) {
+        }
+      };
+
+      if (est_authentifie) {
+        rafraichir_badge_messages();
+        identifiant_intervalle_badge = window.setInterval(rafraichir_badge_messages, 4000);
+
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) return;
+          rafraichir_badge_messages();
+        });
+      }
+    });
+  </script>
+</body>
+</html>

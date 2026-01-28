@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block titre %}Messages{% endblock %}
+{% block en_tete %}
+<div class="w-full flex items-center justify-center relative">
+  <div class="font-semibold">Messages</div>
+  {% if identifiant_publication_source %}
+    <a class="absolute right-0 top-0 bottom-0 flex items-center text-sm text-white/80 hover:text-white transition active:scale-95" href="{% url 'nouveau_message' identifiant_publication=identifiant_publication_source %}" aria-label="Nouveau message">
+      <i data-lucide="edit" class="w-5 h-5"></i>
+    </a>
+  {% else %}
+    <span class="absolute right-0 top-0 bottom-0 flex items-center text-sm text-white/30" aria-label="Nouveau message indisponible">
+      <i data-lucide="edit" class="w-5 h-5"></i>
+    </span>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block contenu %}
+<div id="conteneur_liste_messages" class="px-4 py-2">
+  <div id="liste_conversations" class="divide-y divide-white/10">
+    {% for element in elements %}
+      {% with conversation=element.conversation dernier=element.dernier_message non_lus=element.nombre_non_lus %}
+        <a data-conversation-id="{{ conversation.id }}" class="block py-3" href="{% url 'messages_prives' identifiant_conversation=conversation.id %}">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-white/10 overflow-hidden flex items-center justify-center">
+              {% if request.user.id == conversation.proprietaire_id %}
+                {% if conversation.demandeur.photo %}
+                  <img class="w-full h-full object-cover" src="{{ conversation.demandeur.photo.url }}" alt="" />
+                {% else %}
+                  <i data-lucide="user" class="w-6 h-6 text-white/60"></i>
+                {% endif %}
+              {% else %}
+                {% if conversation.proprietaire.photo %}
+                  <img class="w-full h-full object-cover" src="{{ conversation.proprietaire.photo.url }}" alt="" />
+                {% else %}
+                  <i data-lucide="user" class="w-6 h-6 text-white/60"></i>
+                {% endif %}
+              {% endif %}
+            </div>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-3">
+                <div class="font-semibold truncate">
+                  {% if request.user.id == conversation.proprietaire_id %}
+                    @{{ conversation.demandeur.nom_utilisateur }}
+                  {% else %}
+                    @{{ conversation.proprietaire.nom_utilisateur }}
+                  {% endif %}
+                </div>
+                <div data-heure-dernier class="text-xs text-white/60">
+                  {% if dernier %}{{ dernier.date_creation|date:"H:i" }}{% endif %}
+                </div>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <div data-apercu class="text-sm text-white/70 truncate">
+                  {% if not dernier %}
+                    Publication : {{ conversation.publication.titre }}
+                  {% else %}
+                    {% if dernier.type_message == 'VOCAL' %}Message vocal{% elif dernier.type_message == 'FICHIER' %}Fichier{% else %}{{ dernier.contenu }}{% endif %}
+                  {% endif %}
+                </div>
+                <div class="shrink-0">
+                  {% if non_lus and non_lus > 0 %}
+                    <span data-badge-non-lus class="inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-blue-500 text-white text-xs">{{ non_lus }}</span>
+                  {% else %}
+                    <span data-badge-non-lus class="hidden"></span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </a>
+      {% endwith %}
+    {% empty %}
+      <div class="py-8 text-white/60 text-sm">Aucune conversation. Un nouveau message démarre uniquement depuis une publication.</div>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_liste_messages');
+    if (!conteneur) return;
+
+    let xDepart = 0;
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (x, y) => {
+      xDepart = x;
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (x, y) => {
+      const deltaX = x - xDepart;
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+
+      const seuil = 50;
+      const estHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (duree > 800) return;
+
+      if (estHorizontal && Math.abs(deltaX) > seuil) {
+        if (deltaX < 0) {
+          window.location.href = `{% url 'feed' %}`;
+        }
+      }
+    };
+
+    conteneur.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientX, e.clientY);
+    });
+
+    conteneur.addEventListener('mouseup', (e) => {
+      gererFin(e.clientX, e.clientY);
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const liste = document.getElementById('liste_conversations');
+    if (!liste) return;
+
+    const rafraichir = async () => {
+      try {
+        const reponse = await fetch('{% url "api_liste_conversations" %}', { headers: { 'Accept': 'application/json' } });
+        if (!reponse.ok) return;
+        const donnees = await reponse.json();
+        if (!donnees || !donnees.conversations) return;
+
+        for (const c of donnees.conversations) {
+          const ancre = document.querySelector(`[data-conversation-id="${c.conversation_id}"]`);
+          if (!ancre) continue;
+
+          const badge = ancre.querySelector('[data-badge-non-lus]');
+          if (badge) {
+            if (c.nombre_non_lus && c.nombre_non_lus > 0) {
+              badge.textContent = c.nombre_non_lus;
+              badge.className = 'inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-blue-500 text-white text-xs';
+            } else {
+              badge.textContent = '';
+              badge.className = 'hidden';
+            }
+          }
+
+          const heure = ancre.querySelector('[data-heure-dernier]');
+          const apercu = ancre.querySelector('[data-apercu]');
+          if (c.dernier_message) {
+            if (heure) {
+              const d = new Date(c.dernier_message.date_creation);
+              const hh = String(d.getHours()).padStart(2, '0');
+              const mm = String(d.getMinutes()).padStart(2, '0');
+              heure.textContent = `${hh}:${mm}`;
+            }
+            if (apercu) {
+              if (c.dernier_message.type_message === 'VOCAL') apercu.textContent = 'Message vocal';
+              else if (c.dernier_message.type_message === 'FICHIER') apercu.textContent = 'Fichier';
+              else apercu.textContent = c.dernier_message.contenu || '';
+            }
+          }
+        }
+      } catch (e) {
+      }
+    };
+
+    window.setInterval(rafraichir, 4000);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,418 @@
+{% extends 'base.html' %}
+
+{% block titre %}Discussion{% endblock %}
+{% block en_tete %}Discussion{% endblock %}
+
+{% block contenu %}
+<div id="conteneur_messages_prives" class="pb-20" data-identifiant-conversation="{{ conversation.id }}">
+  <div class="px-4 py-3 border-b border-white/10 bg-black/70 sticky top-12 z-30">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 rounded-full bg-white/10 overflow-hidden flex items-center justify-center">
+          {% if request.user.id == conversation.proprietaire_id %}
+            {% if conversation.demandeur.photo %}
+              <img class="w-full h-full object-cover" src="{{ conversation.demandeur.photo.url }}" alt="" />
+            {% else %}
+              <i data-lucide="user" class="w-6 h-6 text-white/60"></i>
+            {% endif %}
+          {% else %}
+            {% if conversation.proprietaire.photo %}
+              <img class="w-full h-full object-cover" src="{{ conversation.proprietaire.photo.url }}" alt="" />
+            {% else %}
+              <i data-lucide="user" class="w-6 h-6 text-white/60"></i>
+            {% endif %}
+          {% endif %}
+        </div>
+        <div class="min-w-0">
+          <div class="font-semibold truncate">
+            {% if request.user.id == conversation.proprietaire_id %}
+              @{{ conversation.demandeur.nom_utilisateur }}
+            {% else %}
+              @{{ conversation.proprietaire.nom_utilisateur }}
+            {% endif %}
+          </div>
+          <div class="text-xs text-white/60">Discussion liée à la publication</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 text-white/80">
+        <button type="button" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" aria-label="Appel audio">
+          <i data-lucide="phone" class="w-5 h-5"></i>
+        </button>
+        <button type="button" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" aria-label="Appel vidéo">
+          <i data-lucide="video" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="px-4 py-3">
+    <a class="block rounded-2xl border border-white/10 bg-white/5 overflow-hidden mb-3" href="{% url 'details_publication' identifiant=publication.id %}">
+      <div class="relative h-36 bg-black">
+        {% if publication.video %}
+          <video class="w-full h-full object-cover" src="{{ publication.video.url }}" muted playsinline preload="metadata"></video>
+        {% endif %}
+        <div class="absolute top-2 left-2 flex gap-2">
+          <span class="px-2 py-1 rounded bg-white text-black text-xs font-semibold">{{ publication.get_statut_transaction_display }}</span>
+          <span class="px-2 py-1 rounded bg-white/10 text-white text-xs">{% if publication.est_disponible %}Disponible{% else %}Non disponible{% endif %}</span>
+        </div>
+      </div>
+      <div class="p-3">
+        <div class="text-sm text-white/70">Publication épinglée</div>
+        <div class="font-semibold">{{ publication.titre }}</div>
+        <div class="text-sm text-white/70">{{ publication.prix }} FC</div>
+        <div class="text-xs text-white/60">
+          {{ publication.adresse.avenue }} {{ publication.adresse.numero }}, {{ publication.adresse.quartier }}, {{ publication.adresse.commune }}, niv. {{ publication.adresse.niveau }}, {{ publication.adresse.code_appartement }}
+        </div>
+      </div>
+    </a>
+
+    <div id="liste_messages" class="space-y-2">
+      {% for message in messages %}
+        <div data-message-id="{{ message.id }}" class="flex {% if message.expediteur_id == request.user.id %}justify-end{% else %}justify-start{% endif %}">
+          <div class="max-w-[80%] rounded-2xl px-3 py-2 {% if message.expediteur_id == request.user.id %}bg-white text-black{% else %}bg-white/10{% endif %}">
+            {% if message.contenu %}<div class="text-sm">{{ message.contenu }}</div>{% endif %}
+            {% if message.fichier %}<div class="text-xs underline mt-1"><a href="{{ message.fichier.url }}">Fichier</a></div>{% endif %}
+            {% if message.vocal %}
+              <div class="mt-2">
+                <audio controls src="{{ message.vocal.url }}" class="w-full"></audio>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% empty %}
+        <div class="text-white/60 text-sm">Aucun message.</div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <form id="formulaire_messages_prives" method="post" enctype="multipart/form-data" class="fixed bottom-14 left-1/2 -translate-x-1/2 w-full max-w-md px-4 pb-4">
+    {% csrf_token %}
+    <div class="rounded-2xl border border-white/10 bg-black/90 backdrop-blur p-2 flex items-end gap-2">
+      <input id="fichier_message" type="file" name="fichier" class="hidden" />
+      <button id="bouton_fichier" type="button" class="px-2 py-2 rounded-xl bg-white/10 text-white/80 hover:text-white transition active:scale-95" aria-label="Fichiers">
+        <i data-lucide="plus" class="w-5 h-5"></i>
+      </button>
+      <textarea id="zone_texte_message" name="contenu" rows="1" class="flex-1 resize-none bg-transparent outline-none px-2 py-2 max-h-40" placeholder="Message..."></textarea>
+      <button id="bouton_envoyer" class="px-3 py-2 rounded-xl bg-white text-black font-semibold flex items-center justify-center" type="submit" aria-label="Envoyer">
+        <i data-lucide="mic" class="w-5 h-5"></i>
+      </button>
+    </div>
+    {% if formulaire.non_field_errors %}
+      <div class="pt-2 text-sm text-red-300">{{ formulaire.non_field_errors }}</div>
+    {% endif %}
+    <div id="erreur_messages_prives" class="pt-2 text-sm text-red-300 hidden"></div>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const lienMessages = document.getElementById('lien_navigation_messages');
+    if (lienMessages) lienMessages.classList.add('bg-white/10');
+
+    const liste = document.getElementById('liste_messages');
+    if (liste) {
+      liste.scrollIntoView(false);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_messages_prives');
+    if (!conteneur) return;
+
+    let xDepart = 0;
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (x, y) => {
+      xDepart = x;
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (x, y) => {
+      const deltaX = x - xDepart;
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+
+      const seuil = 50;
+      const estHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+
+      if (duree > 800) return;
+
+      if (estHorizontal && Math.abs(deltaX) > seuil) {
+        if (deltaX < 0) {
+          window.location.href = `{% url 'liste_messages' %}`;
+        }
+        if (deltaX > 0) {
+          window.location.href = `{% url 'details_publication' identifiant=publication.id %}`;
+        }
+      }
+    };
+
+    conteneur.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientX, e.clientY);
+    });
+
+    conteneur.addEventListener('mouseup', (e) => {
+      gererFin(e.clientX, e.clientY);
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const bouton = document.getElementById('bouton_fichier');
+    const fichier = document.getElementById('fichier_message');
+    if (bouton && fichier) {
+      bouton.addEventListener('click', () => fichier.click());
+    }
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const conteneur = document.getElementById('conteneur_messages_prives');
+    const formulaire = document.getElementById('formulaire_messages_prives');
+    const liste = document.getElementById('liste_messages');
+    const zone = document.getElementById('zone_texte_message');
+    const boutonEnvoyer = document.getElementById('bouton_envoyer');
+    const boutonFichier = document.getElementById('bouton_fichier');
+    const fichier = document.getElementById('fichier_message');
+    const erreur = document.getElementById('erreur_messages_prives');
+
+    if (!conteneur || !formulaire || !liste || !zone || !boutonEnvoyer) return;
+    const identifiantConversation = conteneur.dataset.identifiantConversation;
+    if (!identifiantConversation) return;
+
+    let dernierId = 0;
+    let enregistrement = null;
+    let mediaRecorder = null;
+
+    const definirDernierIdInitial = () => {
+      const elements = document.querySelectorAll('#liste_messages [data-message-id]');
+      for (const el of elements) {
+        const v = parseInt(el.dataset.messageId || '0', 10);
+        if (!Number.isNaN(v)) dernierId = Math.max(dernierId, v);
+      }
+    };
+    definirDernierIdInitial();
+
+    const scrollBas = () => {
+      try {
+        window.scrollTo(0, document.body.scrollHeight);
+      } catch (e) {
+      }
+    };
+
+    const rafraichirBouton = () => {
+      const texte = (zone.value || '').trim();
+      const nomIcone = texte.length ? 'send' : (enregistrement ? 'square' : 'mic');
+      if (typeof remplacerIconeLucide === 'function') {
+        remplacerIconeLucide(boutonEnvoyer, nomIcone);
+      }
+    };
+    zone.addEventListener('input', rafraichirBouton);
+    rafraichirBouton();
+
+    if (boutonFichier && fichier) {
+      boutonFichier.addEventListener('click', () => fichier.click());
+    }
+
+    const rendreMessage = (m) => {
+      const conteneurLigne = document.createElement('div');
+      conteneurLigne.dataset.messageId = m.id;
+      conteneurLigne.className = `flex ${m.est_moi ? 'justify-end' : 'justify-start'}`;
+
+      const bulle = document.createElement('div');
+      bulle.className = `max-w-[80%] rounded-2xl px-3 py-2 ${m.est_moi ? 'bg-white text-black' : 'bg-white/10'}`;
+
+      if (m.contenu) {
+        const t = document.createElement('div');
+        t.className = 'text-sm';
+        t.textContent = m.contenu;
+        bulle.appendChild(t);
+      }
+
+      if (m.fichier_url) {
+        const lien = document.createElement('a');
+        lien.href = m.fichier_url;
+        lien.className = 'text-xs underline mt-1 block';
+        lien.textContent = 'Fichier';
+        bulle.appendChild(lien);
+      }
+
+      if (m.vocal_url) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = m.vocal_url;
+        audio.className = 'w-full mt-2';
+        bulle.appendChild(audio);
+      }
+
+      conteneurLigne.appendChild(bulle);
+      return conteneurLigne;
+    };
+
+    const urlEnvoyer = `{% url 'api_envoyer_message' identifiant_conversation=0 %}`.replace('/0/', `/${identifiantConversation}/`);
+    const urlLister = `{% url 'api_liste_messages' identifiant_conversation=0 %}`.replace('/0/', `/${identifiantConversation}/`);
+
+    let intervallePolling = null;
+    let websocket = null;
+    let websocketActif = false;
+
+    const afficherMessageSiNouveau = (m) => {
+      if (!m || !m.id) return;
+      if (document.querySelector(`#liste_messages [data-message-id="${m.id}"]`)) return;
+      dernierId = Math.max(dernierId, m.id);
+      liste.appendChild(rendreMessage(m));
+      scrollBas();
+    };
+
+    const envoyerFormData = async (formData) => {
+      const jeton = (formulaire.querySelector('input[name=csrfmiddlewaretoken]') || {}).value;
+      if (erreur) erreur.classList.add('hidden');
+      const reponse = await fetch(urlEnvoyer, { method: 'POST', headers: { 'X-CSRFToken': jeton }, body: formData });
+      if (!reponse.ok) {
+        if (erreur) {
+          erreur.textContent = 'Impossible d\'envoyer le message.';
+          erreur.classList.remove('hidden');
+        }
+        return;
+      }
+      const donnees = await reponse.json();
+      if (donnees && donnees.message) {
+        afficherMessageSiNouveau(donnees.message);
+        zone.value = '';
+        if (fichier) fichier.value = '';
+        rafraichirBouton();
+      }
+    };
+
+    const demarrerVocal = async () => {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const morceaux = [];
+      mediaRecorder = new MediaRecorder(flux);
+      mediaRecorder.addEventListener('dataavailable', (e) => {
+        if (e.data && e.data.size) morceaux.push(e.data);
+      });
+      mediaRecorder.addEventListener('stop', async () => {
+        const blob = new Blob(morceaux, { type: mediaRecorder.mimeType || 'audio/webm' });
+        const fichierVocal = new File([blob], 'vocal.webm', { type: blob.type });
+        const formData = new FormData();
+        formData.append('vocal', fichierVocal);
+        await envoyerFormData(formData);
+        flux.getTracks().forEach((t) => t.stop());
+      });
+      mediaRecorder.start();
+      enregistrement = Date.now();
+      rafraichirBouton();
+    };
+
+    const arreterVocal = async () => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+      }
+      enregistrement = null;
+      rafraichirBouton();
+    };
+
+    formulaire.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const texte = (zone.value || '').trim();
+      const aFichier = fichier && fichier.files && fichier.files[0];
+
+      if (!texte.length && !aFichier) {
+        if (enregistrement) {
+          await arreterVocal();
+          return;
+        }
+        await demarrerVocal();
+        return;
+      }
+
+      const formData = new FormData();
+      if (texte.length) formData.append('contenu', texte);
+      if (aFichier) formData.append('fichier', aFichier);
+      await envoyerFormData(formData);
+    });
+
+    const recupererNouveaux = async () => {
+      try {
+        const reponse = await fetch(`${urlLister}?depuis_id=${dernierId}`, { headers: { 'Accept': 'application/json' } });
+        if (!reponse.ok) return;
+        const donnees = await reponse.json();
+        if (!donnees || !donnees.messages) return;
+        for (const m of donnees.messages) {
+          afficherMessageSiNouveau(m);
+        }
+      } catch (e) {
+      }
+    };
+
+    const demarrerPolling = () => {
+      if (intervallePolling) return;
+      intervallePolling = window.setInterval(recupererNouveaux, 2500);
+    };
+
+    const arreterPolling = () => {
+      if (!intervallePolling) return;
+      window.clearInterval(intervallePolling);
+      intervallePolling = null;
+    };
+
+    const activerWebsocket = () => {
+      try {
+        const protocole = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const urlWs = `${protocole}://${window.location.host}/ws/messages/conversation/${identifiantConversation}/`;
+        websocket = new WebSocket(urlWs);
+
+        websocket.addEventListener('open', () => {
+          websocketActif = true;
+          arreterPolling();
+        });
+
+        websocket.addEventListener('message', (e) => {
+          try {
+            const donnees = JSON.parse(e.data);
+            if (donnees && donnees.type === 'message' && donnees.message) {
+              afficherMessageSiNouveau(donnees.message);
+            }
+          } catch (err) {
+          }
+        });
+
+        websocket.addEventListener('close', () => {
+          websocketActif = false;
+          demarrerPolling();
+        });
+
+        websocket.addEventListener('error', () => {
+          websocketActif = false;
+          demarrerPolling();
+        });
+      } catch (e) {
+        websocketActif = false;
+        demarrerPolling();
+      }
+    };
+
+    activerWebsocket();
+    if (!websocketActif) demarrerPolling();
+  });
+</script>
+{% endblock %}

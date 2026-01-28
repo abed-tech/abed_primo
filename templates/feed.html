@@ -1,0 +1,652 @@
+{% extends 'base.html' %}
+
+{% block titre %}Fil{% endblock %}
+{% block en_tete %}Fil{% endblock %}
+
+{% block contenu %}
+<div id="conteneur_fil" class="h-[calc(100dvh-112px)] overflow-hidden snap-y snap-mandatory touch-none">
+  {% for publication in publications %}
+    <section class="h-[calc(100dvh-112px)] snap-start relative" data-url-details="{% url 'details_publication' identifiant=publication.id %}">
+      <div class="absolute inset-0">
+        {% if publication.video %}
+          <video
+            class="video_publication w-full h-full object-cover"
+            src="{{ publication.video.url }}"
+            playsinline
+            muted
+            loop
+            preload="metadata"
+          ></video>
+        {% else %}
+          <div class="w-full h-full flex items-center justify-center text-white/50 bg-black">Aucune vidéo</div>
+        {% endif %}
+      </div>
+
+      <div class="absolute top-3 left-3 right-3 flex items-center justify-between z-20">
+        <div class="flex gap-2">
+          <span class="px-2 py-1 rounded bg-white text-black text-xs font-semibold">{{ publication.get_statut_transaction_display }}</span>
+          <span class="px-2 py-1 rounded bg-white/10 text-white text-xs">{% if publication.est_disponible %}Disponible{% else %}Non disponible{% endif %}</span>
+        </div>
+        <a
+          class="lien_profil_proprietaire bouton_superpose_fil w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg transition active:scale-105"
+          data-icone-contraste="1"
+          href="{% url 'profil_utilisateur' nom_utilisateur=publication.proprietaire.nom_utilisateur %}"
+          aria-label="Voir le profil du propriétaire"
+        >
+          {% if publication.proprietaire.photo %}
+            <img class="w-9 h-9 rounded-full object-cover" src="{{ publication.proprietaire.photo.url }}" alt="" />
+          {% else %}
+            <i data-lucide="user" class="w-7 h-7"></i>
+          {% endif %}
+        </a>
+      </div>
+
+      <div class="absolute bottom-20 left-0 right-0 z-20 px-4">
+        <input type="range" value="0" min="0" max="100" class="progression w-full" />
+        <div class="pt-3 flex items-end justify-between gap-4">
+          <div class="space-y-1">
+            <a class="font-semibold" href="{% url 'details_publication' identifiant=publication.id %}">{{ publication.titre }}</a>
+            <div class="text-sm text-white/80">{{ publication.prix }} FC</div>
+            <div class="text-xs text-white/70">@{{ publication.proprietaire.nom_utilisateur }}</div>
+          </div>
+
+          <div class="flex flex-col gap-3 items-center">
+            <a
+              class="lien_message_publication bouton_superpose_fil w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg transition active:scale-110"
+              data-icone-contraste="1"
+              href="{% url 'nouveau_message' identifiant_publication=publication.id %}"
+              aria-label="Contacter"
+            >
+              <i data-lucide="message-circle" class="w-9 h-9"></i>
+            </a>
+            <a
+              class="lien_localisation_publication bouton_superpose_fil w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg transition active:scale-110"
+              data-icone-contraste="1"
+              href="https://www.google.com/maps/search/?api=1&query={{ publication.adresse|urlencode }}"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Ouvrir l'adresse dans Google Maps"
+            >
+              <i data-lucide="map-pin" class="w-7 h-7"></i>
+            </a>
+            <button
+              class="bouton_actions bouton_superpose_fil w-11 h-11 rounded-full flex items-center justify-center backdrop-blur-sm shadow-lg transition active:scale-110"
+              data-icone-contraste="1"
+              type="button"
+              data-identifiant="{{ publication.id }}"
+              aria-label="Actions"
+            >
+              <i data-lucide="share" class="w-9 h-9"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  {% empty %}
+    <div class="h-[calc(100dvh-112px)] flex items-center justify-center text-white/60">
+      Aucune publication.
+    </div>
+  {% endfor %}
+</div>
+
+<div class="px-4 py-3 space-y-3">
+  <div class="grid grid-cols-3 gap-2">
+    <a class="py-2 rounded border border-white/20 text-center {% if tri == 'recent' %}bg-white text-black font-semibold{% endif %}" href="?{% if parametres_sans_page_et_tri %}{{ parametres_sans_page_et_tri }}&{% endif %}tri=recent">Récent</a>
+    <a class="py-2 rounded border border-white/20 text-center {% if tri == 'prix_asc' %}bg-white text-black font-semibold{% endif %}" href="?{% if parametres_sans_page_et_tri %}{{ parametres_sans_page_et_tri }}&{% endif %}tri=prix_asc">Prix ↑</a>
+    <a class="py-2 rounded border border-white/20 text-center {% if tri == 'prix_desc' %}bg-white text-black font-semibold{% endif %}" href="?{% if parametres_sans_page_et_tri %}{{ parametres_sans_page_et_tri }}&{% endif %}tri=prix_desc">Prix ↓</a>
+  </div>
+
+  {% if page_objet and page_objet.paginator.num_pages > 1 %}
+    <div class="flex items-center justify-between">
+      {% if page_objet.has_previous %}
+        <a class="px-3 py-2 rounded border border-white/20" href="?{% if parametres_sans_page %}{{ parametres_sans_page }}&{% endif %}page={{ page_objet.previous_page_number }}">Précédent</a>
+      {% else %}
+        <div class="px-3 py-2 rounded border border-white/10 text-white/40">Précédent</div>
+      {% endif %}
+
+      <div class="text-sm text-white/70">Page {{ page_objet.number }} / {{ page_objet.paginator.num_pages }}</div>
+
+      {% if page_objet.has_next %}
+        <a class="px-3 py-2 rounded border border-white/20" href="?{% if parametres_sans_page %}{{ parametres_sans_page }}&{% endif %}page={{ page_objet.next_page_number }}">Suivant</a>
+      {% else %}
+        <div class="px-3 py-2 rounded border border-white/10 text-white/40">Suivant</div>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<div id="modale_actions_fil" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/70" data-fermer="1"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl border border-white/10 bg-black p-4">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Actions</div>
+      <button class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" type="button" data-fermer="1" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="pt-3 space-y-3">
+      <button id="bouton_ouvrir_partager_fil" class="w-full py-3 rounded border border-white/20" type="button">Partager</button>
+      <button id="bouton_ouvrir_signaler_fil" class="w-full py-3 rounded border border-white/20" type="button">Signaler</button>
+    </div>
+  </div>
+</div>
+
+<div id="modale_partager_fil" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/70" data-fermer="1"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl border border-white/10 bg-black p-4">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Partager</div>
+      <button class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" type="button" data-fermer="1" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div class="pt-3 space-y-3">
+      <input id="champ_lien_partage_fil" class="w-full px-3 py-2 rounded bg-white/10 border border-white/10" readonly />
+      <button id="bouton_copier_lien_fil" class="w-full py-3 rounded bg-white text-black font-semibold" type="button">Copier le lien</button>
+      <button id="bouton_partager_natif_fil" class="w-full py-3 rounded border border-white/20" type="button">Partager</button>
+      <div id="etat_partage_fil" class="text-sm text-white/70"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modale_signaler_fil" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/70" data-fermer="1"></div>
+  <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[92%] max-w-md rounded-2xl border border-white/10 bg-black p-4">
+    <div class="flex items-center justify-between">
+      <div class="font-semibold">Signaler</div>
+      <button class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/80 hover:text-white transition active:scale-95" type="button" data-fermer="1" aria-label="Fermer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <form id="formulaire_signaler_fil" method="post" class="pt-3 space-y-3">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm text-white/80">Motif</label>
+        <select name="motif" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" required>
+          <option value="Contenu inapproprié">Contenu inapproprié</option>
+          <option value="Fausse annonce">Fausse annonce</option>
+          <option value="Arnaque">Arnaque</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Description (optionnel)</label>
+        <textarea name="description" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" rows="4"></textarea>
+      </div>
+      <button class="w-full py-3 rounded bg-white text-black font-semibold" type="submit">Envoyer</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  function activerFilTikTok() {
+    const conteneur = document.getElementById('conteneur_fil');
+    if (!conteneur) return;
+
+    const videos = Array.from(document.querySelectorAll('.video_publication'));
+    const sections = Array.from(conteneur.querySelectorAll('section'));
+
+    let video_actuelle_en_lecture = null;
+    let observateur = null;
+
+    const obtenirVideoDeSection = (section) => {
+      if (!section) return null;
+      return section.querySelector('video.video_publication');
+    };
+
+    const appliquerThemeIcones = (section, theme) => {
+      if (!section) return;
+      const icones = section.querySelectorAll('[data-icone-contraste="1"]');
+      icones.forEach((el) => {
+        el.classList.remove(
+          'bg-black/45',
+          'bg-black/60',
+          'bg-white/65',
+          'bg-white/80',
+          'text-white',
+          'text-black',
+        );
+        el.classList.add('drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]');
+
+        if (theme === 'clair') {
+          el.classList.add('bg-black/45', 'hover:bg-black/60', 'text-white');
+        } else {
+          el.classList.add('bg-white/65', 'hover:bg-white/80', 'text-black');
+        }
+      });
+    };
+
+    const evaluerLuminositeVideo = (video) => {
+      try {
+        if (!video || !video.videoWidth || !video.videoHeight) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = 24;
+        canvas.height = 24;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return null;
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let somme = 0;
+        let n = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const r = pixels[i];
+          const g = pixels[i + 1];
+          const b = pixels[i + 2];
+          const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+          somme += luminance;
+          n += 1;
+        }
+        return n ? (somme / n) : null;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const ajusterContrasteSelonVideo = (video) => {
+      const section = video ? video.closest('section') : null;
+      if (!section) return;
+
+      const luminance = evaluerLuminositeVideo(video);
+      if (luminance === null) {
+        appliquerThemeIcones(section, 'clair');
+        return;
+      }
+
+      const theme = luminance > 140 ? 'clair' : 'sombre';
+      appliquerThemeIcones(section, theme);
+    };
+
+    const preparerLazyLoading = () => {
+      videos.forEach((video, index) => {
+        try {
+          const src = video.getAttribute('src');
+          if (src) {
+            video.dataset.src = src;
+            if (index !== 0) {
+              video.removeAttribute('src');
+              video.preload = 'none';
+            } else {
+              video.preload = 'metadata';
+            }
+          }
+        } catch (e) {
+        }
+      });
+    };
+
+    const chargerSourceSiBesoin = (video) => {
+      if (!video) return;
+      const src = video.getAttribute('src');
+      const dataSrc = video.dataset.src;
+      if (!src && dataSrc) {
+        video.setAttribute('src', dataSrc);
+        try { video.load(); } catch (e) {}
+      }
+    };
+
+    const reinitialiserProgression = (video) => {
+      if (!video) return;
+      const section = video.closest('section');
+      const range = section ? section.querySelector('input.progression') : null;
+      if (range) range.value = 0;
+      try { video.currentTime = 0; } catch (e) {}
+    };
+
+    const mettreEnPauseEtMuet = (video) => {
+      if (!video) return;
+      try { video.pause(); } catch (e) {}
+      try { video.muted = true; } catch (e) {}
+      reinitialiserProgression(video);
+    };
+
+    sections.forEach((section) => {
+      appliquerThemeIcones(section, 'clair');
+      const video = obtenirVideoDeSection(section);
+      if (!video) return;
+      video.addEventListener('loadeddata', () => ajusterContrasteSelonVideo(video), { passive: true });
+      video.addEventListener('timeupdate', () => {
+        if (!video._horodatage_dernier_contraste || (Date.now() - video._horodatage_dernier_contraste) > 1200) {
+          video._horodatage_dernier_contraste = Date.now();
+          ajusterContrasteSelonVideo(video);
+        }
+      }, { passive: true });
+    });
+
+    const mettreEnLectureExclusive = async (video) => {
+      if (!video) return;
+
+      if (video_actuelle_en_lecture && video_actuelle_en_lecture !== video) {
+        mettreEnPauseEtMuet(video_actuelle_en_lecture);
+      }
+
+      videos.forEach((autre) => {
+        if (autre !== video) mettreEnPauseEtMuet(autre);
+      });
+
+      video_actuelle_en_lecture = video;
+
+      chargerSourceSiBesoin(video);
+      try { video.muted = false; } catch (e) {}
+
+      try {
+        await video.play();
+      } catch (e) {
+        try {
+          video.muted = true;
+          await video.play();
+        } catch (e2) {
+        }
+      }
+
+      prechargerSuivante(video);
+    };
+
+    const prechargerSuivante = (video) => {
+      try {
+        const section = video.closest('section');
+        const index = sections.indexOf(section);
+        if (index < 0) return;
+        const sectionSuivante = sections[index + 1];
+        const videoSuivante = obtenirVideoDeSection(sectionSuivante);
+        if (!videoSuivante) return;
+        chargerSourceSiBesoin(videoSuivante);
+        videoSuivante.preload = 'metadata';
+      } catch (e) {
+      }
+    };
+
+    const obtenirIndexActuel = () => {
+      const hauteur = conteneur.clientHeight || window.innerHeight;
+      return Math.round(conteneur.scrollTop / hauteur);
+    };
+
+    const defilerVersIndex = (index) => {
+      const hauteur = conteneur.clientHeight || window.innerHeight;
+      const indexFinal = Math.min(Math.max(index, 0), Math.max(sections.length - 1, 0));
+      conteneur.scrollTo({ top: indexFinal * hauteur, behavior: 'smooth' });
+    };
+
+    const activerObservateur = () => {
+      if (observateur) {
+        try { observateur.disconnect(); } catch (e) {}
+        observateur = null;
+      }
+
+      observateur = new IntersectionObserver(
+        (entrees) => {
+          const candidates = entrees
+            .filter((e) => e.isIntersecting)
+            .map((e) => ({
+              section: e.target,
+              ratio: e.intersectionRatio,
+            }))
+            .filter((c) => c.ratio >= 0.8)
+            .sort((a, b) => b.ratio - a.ratio);
+
+          if (!candidates.length) return;
+          const section = candidates[0].section;
+          const video = obtenirVideoDeSection(section);
+          if (!video) return;
+          mettreEnLectureExclusive(video);
+        },
+        {
+          root: conteneur,
+          threshold: [0, 0.25, 0.5, 0.8, 1],
+        },
+      );
+
+      sections.forEach((section) => observateur.observe(section));
+    };
+
+    conteneur.addEventListener('wheel', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+
+    conteneur.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+    }, { passive: false });
+
+    let xDepart = 0;
+    let yDepart = 0;
+    let horodatageDepart = 0;
+
+    const gererDebut = (x, y) => {
+      xDepart = x;
+      yDepart = y;
+      horodatageDepart = Date.now();
+    };
+
+    const gererFin = (x, y) => {
+      const deltaX = x - xDepart;
+      const deltaY = y - yDepart;
+      const duree = Date.now() - horodatageDepart;
+
+      const seuil = 50;
+      const estHorizontal = Math.abs(deltaX) > Math.abs(deltaY);
+      const estVertical = Math.abs(deltaY) > Math.abs(deltaX);
+
+      if (duree > 800) return;
+
+      if (estVertical && Math.abs(deltaY) > seuil) {
+        const index = obtenirIndexActuel();
+        if (deltaY < 0) {
+          defilerVersIndex(index + 1);
+        } else {
+          defilerVersIndex(index - 1);
+        }
+        return;
+      }
+
+      if (estHorizontal && Math.abs(deltaX) > seuil) {
+        if (deltaX > 0) {
+          const index = obtenirIndexActuel();
+          const section = sections[index];
+          const url = section ? section.getAttribute('data-url-details') : null;
+          if (url) window.location.href = url;
+        }
+      }
+    };
+
+    conteneur.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      gererDebut(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('touchend', (e) => {
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      gererFin(t.clientX, t.clientY);
+    }, { passive: true });
+
+    conteneur.addEventListener('mousedown', (e) => {
+      gererDebut(e.clientX, e.clientY);
+    });
+
+    conteneur.addEventListener('mouseup', (e) => {
+      gererFin(e.clientX, e.clientY);
+    });
+
+    sections.forEach(section => {
+      const video = section.querySelector('video');
+      const range = section.querySelector('input.progression');
+      if (!video || !range) return;
+
+      section.querySelectorAll('a.lien_message_publication').forEach((lien) => {
+        lien.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      });
+
+      section.querySelectorAll('a.lien_profil_proprietaire').forEach((lien) => {
+        lien.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      });
+
+      section.querySelectorAll('a.lien_localisation_publication').forEach((lien) => {
+        lien.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+      });
+
+      let horodatageDernierTap = 0;
+
+      const synchroniserProgression = () => {
+        if (!video.duration || !isFinite(video.duration)) return;
+        range.value = Math.min(100, Math.max(0, (video.currentTime / video.duration) * 100));
+      };
+
+      video.addEventListener('timeupdate', synchroniserProgression);
+
+      range.addEventListener('input', () => {
+        if (!video.duration || !isFinite(video.duration)) return;
+        video.currentTime = (parseFloat(range.value) / 100) * video.duration;
+      });
+
+      let minuteurSimpleTap = null;
+      section.addEventListener('click', () => {
+        const maintenant = Date.now();
+        const estDoubleTap = (maintenant - horodatageDernierTap) < 250;
+        horodatageDernierTap = maintenant;
+
+        if (estDoubleTap) {
+          if (minuteurSimpleTap) {
+            window.clearTimeout(minuteurSimpleTap);
+            minuteurSimpleTap = null;
+          }
+          if (video_actuelle_en_lecture === video) {
+            video.muted = !video.muted;
+          }
+          return;
+        }
+
+        if (minuteurSimpleTap) {
+          window.clearTimeout(minuteurSimpleTap);
+          minuteurSimpleTap = null;
+        }
+
+        minuteurSimpleTap = window.setTimeout(async () => {
+          minuteurSimpleTap = null;
+          if (video.paused) {
+            await mettreEnLectureExclusive(video);
+          } else {
+            try { video.pause(); } catch (e) {}
+          }
+        }, 260);
+      });
+    });
+
+    preparerLazyLoading();
+    activerObservateur();
+
+    const premiereSection = sections[0];
+    const premiereVideo = obtenirVideoDeSection(premiereSection);
+    if (premiereVideo) {
+      mettreEnLectureExclusive(premiereVideo);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', activerFilTikTok);
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const modaleActions = document.getElementById('modale_actions_fil');
+    const modalePartager = document.getElementById('modale_partager_fil');
+    const modaleSignaler = document.getElementById('modale_signaler_fil');
+
+    const boutonPartager = document.getElementById('bouton_ouvrir_partager_fil');
+    const boutonSignaler = document.getElementById('bouton_ouvrir_signaler_fil');
+
+    const champLien = document.getElementById('champ_lien_partage_fil');
+    const boutonCopier = document.getElementById('bouton_copier_lien_fil');
+    const boutonPartagerNatif = document.getElementById('bouton_partager_natif_fil');
+    const etat = document.getElementById('etat_partage_fil');
+
+    const formulaireSignaler = document.getElementById('formulaire_signaler_fil');
+
+    const ouvrir = (modale) => {
+      if (!modale) return;
+      modale.classList.remove('hidden');
+    };
+
+    const fermer = (modale) => {
+      if (!modale) return;
+      modale.classList.add('hidden');
+    };
+
+    const activerFermeture = (modale) => {
+      if (!modale) return;
+      modale.querySelectorAll('[data-fermer="1"]').forEach((el) => {
+        el.addEventListener('click', () => fermer(modale));
+      });
+    };
+
+    activerFermeture(modaleActions);
+    activerFermeture(modalePartager);
+    activerFermeture(modaleSignaler);
+
+    let identifiantPublication = null;
+    const obtenirUrlDetails = (id) => {
+      const section = document.querySelector(`section[data-url-details][data-url-details*="/publication/${id}/"]`);
+      return section ? section.getAttribute('data-url-details') : null;
+    };
+
+    document.querySelectorAll('.bouton_actions').forEach((bouton) => {
+      bouton.addEventListener('click', () => {
+        identifiantPublication = bouton.getAttribute('data-identifiant');
+        ouvrir(modaleActions);
+      });
+    });
+
+    if (boutonPartager) {
+      boutonPartager.addEventListener('click', () => {
+        if (!identifiantPublication) return;
+        const url = `${window.location.origin}/publication/${identifiantPublication}/`;
+        if (champLien) champLien.value = url;
+        fermer(modaleActions);
+        ouvrir(modalePartager);
+      });
+    }
+
+    if (boutonSignaler && formulaireSignaler) {
+      boutonSignaler.addEventListener('click', () => {
+        if (!identifiantPublication) return;
+        formulaireSignaler.action = `${window.location.origin}/publication/${identifiantPublication}/signaler/`;
+        fermer(modaleActions);
+        ouvrir(modaleSignaler);
+      });
+    }
+
+    if (boutonCopier && champLien) {
+      boutonCopier.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(champLien.value);
+          if (etat) etat.textContent = 'Lien copié.';
+        } catch (e) {
+          if (etat) etat.textContent = 'Impossible de copier le lien.';
+        }
+      });
+    }
+
+    if (boutonPartagerNatif && champLien) {
+      boutonPartagerNatif.addEventListener('click', async () => {
+        const url = champLien.value;
+        try {
+          if (navigator.share) {
+            await navigator.share({ title: document.title, url });
+            if (etat) etat.textContent = 'Partage envoyé.';
+          } else {
+            await navigator.clipboard.writeText(url);
+            if (etat) etat.textContent = 'Lien copié (partage non disponible).';
+          }
+        } catch (e) {
+          if (etat) etat.textContent = 'Partage annulé.';
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

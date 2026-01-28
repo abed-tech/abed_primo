@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+
+{% block titre %}Inscription{% endblock %}
+{% block en_tete %}Inscription{% endblock %}
+
+{% block contenu %}
+<div class="px-4 py-6 space-y-4">
+  <form method="post" class="space-y-4">
+    {% csrf_token %}
+
+    <div class="grid grid-cols-1 gap-3">
+      <div>
+        <label class="block text-sm text-white/80">Prénom</label>
+        <input name="prenom" value="{{ formulaire.data.prenom|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Nom</label>
+        <input name="nom" value="{{ formulaire.data.nom|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+      </div>
+      <div>
+        <label class="block text-sm text-white/80">Poste-nom</label>
+        <input name="poste_nom" value="{{ formulaire.data.poste_nom|default:'' }}" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+      </div>
+    </div>
+
+    <div class="rounded border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+      Remplis prénom, nom et poste-nom : 5 noms d'utilisateur uniques seront proposés automatiquement.
+    </div>
+
+    <div>
+      <label class="block text-sm text-white/80">Nom d'utilisateur (non modifiable)</label>
+      <select id="select_nom_utilisateur" name="nom_utilisateur" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10">
+        {% for valeur, libelle in formulaire.fields.nom_utilisateur.choices %}
+          <option value="{{ valeur }}" {% if formulaire.data.nom_utilisateur == valeur %}selected{% endif %}>{{ libelle }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div>
+      <label class="block text-sm text-white/80">Mot de passe</label>
+      <input type="password" name="mot_de_passe1" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+    </div>
+    <div>
+      <label class="block text-sm text-white/80">Confirmation</label>
+      <input type="password" name="mot_de_passe2" class="w-full mt-1 px-3 py-2 rounded bg-white/10 border border-white/10" />
+    </div>
+
+    {% if formulaire.errors %}
+      <div class="text-red-300 text-sm">{{ formulaire.errors }}</div>
+    {% endif %}
+
+    <button class="w-full py-3 rounded bg-white text-black font-semibold">Créer le compte</button>
+  </form>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const champPrenom = document.querySelector('input[name="prenom"]');
+    const champNom = document.querySelector('input[name="nom"]');
+    const champPosteNom = document.querySelector('input[name="poste_nom"]');
+    const select = document.getElementById('select_nom_utilisateur');
+
+    if (!champPrenom || !champNom || !champPosteNom || !select) return;
+
+    let temporisateur = null;
+
+    const charger = async () => {
+      const prenom = (champPrenom.value || '').trim();
+      const nom = (champNom.value || '').trim();
+      const poste_nom = (champPosteNom.value || '').trim();
+
+      if (!prenom || !nom || !poste_nom) {
+        select.innerHTML = '';
+        return;
+      }
+
+      const params = new URLSearchParams({ prenom, nom, poste_nom });
+      const reponse = await fetch(`{% url 'propositions_inscription' %}?${params.toString()}`, { headers: { 'Accept': 'application/json' } });
+      const donnees = await reponse.json();
+
+      const propositions = donnees.propositions || [];
+      select.innerHTML = '';
+      propositions.forEach((p) => {
+        const option = document.createElement('option');
+        option.value = p;
+        option.textContent = p;
+        select.appendChild(option);
+      });
+    };
+
+    const planifier = () => {
+      window.clearTimeout(temporisateur);
+      temporisateur = window.setTimeout(charger, 250);
+    };
+
+    champPrenom.addEventListener('input', planifier);
+    champNom.addEventListener('input', planifier);
+    champPosteNom.addEventListener('input', planifier);
+
+    charger();
+  });
+</script>
+{% endblock %}
