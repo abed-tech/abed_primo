@@ -27,9 +27,9 @@ DOSSIER_DONNEES.mkdir(parents=True, exist_ok=True)
 SECRET_KEY = 'django-insecure-(8@q64x8wo%65ghx#ct!k@2dqg(-2_%5z_h_=fvjdvw0(69a^z'
 
 # AVERTISSEMENT : ne pas activer DEBUG en production.
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Définition des applications
