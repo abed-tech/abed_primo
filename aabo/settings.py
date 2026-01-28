@@ -1,57 +1,47 @@
 """
 Paramètres Django pour le projet aabo.
-Version optimisée pour Render.com (gratuit)
+
+Généré par 'django-admin startproject' avec Django 6.0.
+
+Pour plus d'informations sur ce fichier :
+https://docs.djangoproject.com/en/6.0/topics/settings/
+
+Pour la liste complète des paramètres :
+https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Construction des chemins
+# Charger les variables d'environnement depuis .env
+load_dotenv()
+
+# Construction des chemins du projet : BASE_DIR / 'sous_dossier'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# ============================================
-# 🔐 SÉCURITÉ - Variables d'environnement
-# ============================================
-
-# SECRET_KEY depuis Render (OBLIGATOIRE)
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY', 
-    'django-dev-key-only-change-in-production'  # Dev seulement
-)
-
-# DEBUG depuis Render
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-
-# ============================================
-# 🌍 HÔTES AUTORISÉS - Configuration Render
-# ============================================
-
-ALLOWED_HOSTS = []
-
-# 1. URL fournie par Render (automatique)
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
-if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-
-# 2. Variable manuelle pour toutes les URLs Render
-if not DEBUG:
-    ALLOWED_HOSTS.extend([
-        '.onrender.com',           # Toutes les apps Render
-        'localhost',
-        '127.0.0.1',
-    ])
-
-# ============================================
-# 📁 DOSSIER DONNÉES (adapté Render)
-# ============================================
-
-# Sur Render, utiliser BASE_DIR directement
-DOSSIER_DONNEES = BASE_DIR / 'data'
+DOSSIER_DONNEES = Path(os.environ.get('LOCALAPPDATA', str(BASE_DIR))) / 'aabo'
 DOSSIER_DONNEES.mkdir(parents=True, exist_ok=True)
 
-# ============================================
-# APPLICATIONS
-# ============================================
+
+# Paramètres de développement (non adaptés à la production)
+# Voir https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+
+# AVERTISSEMENT : conserve la clé secrète de production hors du code source.
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-(8@q64x8wo%65ghx#ct!k@2dqg(-2_%5z_h_=fvjdvw0(69a^z')
+
+# AVERTISSEMENT : ne pas activer DEBUG en production.
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',') if os.environ.get('ALLOWED_HOSTS') else []
+
+# Origines de confiance pour CSRF (production)
+CSRF_TRUSTED_ORIGINS = [
+    f'https://{host}' for host in ALLOWED_HOSTS if host
+]
+
+
+# Définition des applications
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -60,17 +50,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',  # Gardé mais sera WSGI sur Render gratuit
+    'channels',
     'immobilier.apps.ConfigurationImmobilier',
 ]
 
-# ============================================
-# MIDDLEWARE
-# ============================================
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # ESSENTIEL pour static files
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -78,10 +64,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
-
-# ============================================
-# TEMPLATES & URLs
-# ============================================
 
 ROOT_URLCONF = 'aabo.urls'
 
@@ -100,36 +82,41 @@ TEMPLATES = [
     },
 ]
 
-# ============================================
-# 🚨 IMPORTANT : WSGI vs ASGI sur Render gratuit
-# ============================================
-
-# Render gratuit supporte SEULEMENT WSGI
 WSGI_APPLICATION = 'aabo.wsgi.application'
 
-# Channels/ASGI désactivé pour compatibilité Render gratuit
-# ASGI_APPLICATION = 'aabo.routage.application'  # À COMMENTER
+ASGI_APPLICATION = 'aabo.routage.application'
 
-# CHANNEL_LAYERS = {  # À COMMENTER
-#     'default': {
-#         'BACKEND': 'channels.layers.InMemoryChannelLayer',
-#     }
-# }
-
-# ============================================
-# BASE DE DONNÉES (SQLite pour gratuit)
-# ============================================
-
-DATABASES = {
+CHANNEL_LAYERS = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DOSSIER_DONNEES / 'db.sqlite3',
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
     }
 }
 
-# ============================================
-# VALIDATION MOTS DE PASSE
-# ============================================
+
+# Base de données
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+
+import dj_database_url
+
+if os.environ.get('DATABASE_URL'):
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.environ.get('DATABASE_URL'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': DOSSIER_DONNEES / 'db.sqlite3',
+        }
+    }
+
+
+# Validation des mots de passe
+# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -146,70 +133,51 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-# ============================================
-# INTERNATIONALISATION
-# ============================================
+
+# Internationalisation
+# https://docs.djangoproject.com/en/6.0/topics/i18n/
 
 LANGUAGE_CODE = 'fr-fr'
-TIME_ZONE = 'Europe/Paris'
-USE_I18N = True
-USE_TZ = True
 
-# ============================================
-# AUTHENTIFICATION
-# ============================================
+TIME_ZONE = 'Europe/Paris'
+
+USE_I18N = True
+
+USE_TZ = True
 
 LOGIN_URL = '/connexion/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-# ============================================
-# ⚡ FICHIERS STATIQUES (CONFIGURATION RENDER)
-# ============================================
+
+# Fichiers statiques (CSS, JavaScript, images)
+# https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'  # ESSENTIEL pour collectstatic
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# WhiteNoise configuration (pour servir les fichiers)
+# Configuration WhiteNoise pour servir les fichiers statiques en production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ============================================
-# 🖼️ FICHIERS MÉDIA (ATTENTION RENDER gratuit)
-# ============================================
-
+# Fichiers médias (vidéos, photos)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# ⚠️ ATTENTION : Les fichiers uploadés dans /media seront PERDUS
-# à chaque redéploiement sur Render (gratuit)
-
-# ============================================
-# MODÈLE UTILISATEUR
-# ============================================
-
+# Modèle utilisateur personnalisé
 AUTH_USER_MODEL = 'immobilier.Utilisateur'
 
-# ============================================
-# 🛡️ SÉCURITÉ PRODUCTION
-# ============================================
+# Type de clé primaire par défaut
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Paramètres de sécurité pour la production
 if not DEBUG:
-    # HTTPS obligatoire sur Render
     SECURE_SSL_REDIRECT = True
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    
-    # Cookies sécurisés
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    
-    # Headers sécurité
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    
-    # Protection XSS
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
-    
-    # Referrer Policy
-    SECURE_REFERRER_POLICY = 'same-origin'
+    X_FRAME_OPTIONS = 'DENY'
