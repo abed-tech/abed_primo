@@ -1,38 +1,57 @@
 """
 Paramètres Django pour le projet aabo.
-
-Généré par 'django-admin startproject' avec Django 6.0.
-
-Pour plus d'informations sur ce fichier :
-https://docs.djangoproject.com/en/6.0/topics/settings/
-
-Pour la liste complète des paramètres :
-https://docs.djangoproject.com/en/6.0/ref/settings/
+Version optimisée pour Render.com (gratuit)
 """
 
 import os
 from pathlib import Path
 
-# Construction des chemins du projet : BASE_DIR / 'sous_dossier'.
+# Construction des chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DOSSIER_DONNEES = Path(os.environ.get('LOCALAPPDATA', str(BASE_DIR))) / 'aabo'
+# ============================================
+# 🔐 SÉCURITÉ - Variables d'environnement
+# ============================================
+
+# SECRET_KEY depuis Render (OBLIGATOIRE)
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY', 
+    'django-dev-key-only-change-in-production'  # Dev seulement
+)
+
+# DEBUG depuis Render
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
+
+# ============================================
+# 🌍 HÔTES AUTORISÉS - Configuration Render
+# ============================================
+
+ALLOWED_HOSTS = []
+
+# 1. URL fournie par Render (automatique)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
+# 2. Variable manuelle pour toutes les URLs Render
+if not DEBUG:
+    ALLOWED_HOSTS.extend([
+        '.onrender.com',           # Toutes les apps Render
+        'localhost',
+        '127.0.0.1',
+    ])
+
+# ============================================
+# 📁 DOSSIER DONNÉES (adapté Render)
+# ============================================
+
+# Sur Render, utiliser BASE_DIR directement
+DOSSIER_DONNEES = BASE_DIR / 'data'
 DOSSIER_DONNEES.mkdir(parents=True, exist_ok=True)
 
-
-# Paramètres de développement (non adaptés à la production)
-# Voir https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
-
-# AVERTISSEMENT : conserve la clé secrète de production hors du code source.
-SECRET_KEY = 'django-insecure-(8@q64x8wo%65ghx#ct!k@2dqg(-2_%5z_h_=fvjdvw0(69a^z'
-
-# AVERTISSEMENT : ne pas activer DEBUG en production.
-DEBUG = False
-
-ALLOWED_HOSTS = ["*"]
-
-
-# Définition des applications
+# ============================================
+# APPLICATIONS
+# ============================================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,13 +60,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
+    'channels',  # Gardé mais sera WSGI sur Render gratuit
     'immobilier.apps.ConfigurationImmobilier',
 ]
 
+# ============================================
+# MIDDLEWARE
+# ============================================
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # ESSENTIEL pour static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -55,6 +78,10 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+# ============================================
+# TEMPLATES & URLs
+# ============================================
 
 ROOT_URLCONF = 'aabo.urls'
 
@@ -73,19 +100,25 @@ TEMPLATES = [
     },
 ]
 
+# ============================================
+# 🚨 IMPORTANT : WSGI vs ASGI sur Render gratuit
+# ============================================
+
+# Render gratuit supporte SEULEMENT WSGI
 WSGI_APPLICATION = 'aabo.wsgi.application'
 
-ASGI_APPLICATION = 'aabo.routage.application'
+# Channels/ASGI désactivé pour compatibilité Render gratuit
+# ASGI_APPLICATION = 'aabo.routage.application'  # À COMMENTER
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels.layers.InMemoryChannelLayer',
-    }
-}
+# CHANNEL_LAYERS = {  # À COMMENTER
+#     'default': {
+#         'BACKEND': 'channels.layers.InMemoryChannelLayer',
+#     }
+# }
 
-
-# Base de données
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# ============================================
+# BASE DE DONNÉES (SQLite pour gratuit)
+# ============================================
 
 DATABASES = {
     'default': {
@@ -94,9 +127,9 @@ DATABASES = {
     }
 }
 
-
-# Validation des mots de passe
-# https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
+# ============================================
+# VALIDATION MOTS DE PASSE
+# ============================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -113,33 +146,70 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-# Internationalisation
-# https://docs.djangoproject.com/en/6.0/topics/i18n/
+# ============================================
+# INTERNATIONALISATION
+# ============================================
 
 LANGUAGE_CODE = 'fr-fr'
-
 TIME_ZONE = 'Europe/Paris'
-
 USE_I18N = True
-
 USE_TZ = True
+
+# ============================================
+# AUTHENTIFICATION
+# ============================================
 
 LOGIN_URL = '/connexion/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
-
-# Fichiers statiques (CSS, JavaScript, images)
-# https://docs.djangoproject.com/en/6.0/howto/static-files/
+# ============================================
+# ⚡ FICHIERS STATIQUES (CONFIGURATION RENDER)
+# ============================================
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR/ 'staticfiles'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # ESSENTIEL pour collectstatic
+
+# WhiteNoise configuration (pour servir les fichiers)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Fichiers médias (vidéos, photos)
+# ============================================
+# 🖼️ FICHIERS MÉDIA (ATTENTION RENDER gratuit)
+# ============================================
+
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Modèle utilisateur personnalisé
+# ⚠️ ATTENTION : Les fichiers uploadés dans /media seront PERDUS
+# à chaque redéploiement sur Render (gratuit)
+
+# ============================================
+# MODÈLE UTILISATEUR
+# ============================================
+
 AUTH_USER_MODEL = 'immobilier.Utilisateur'
+
+# ============================================
+# 🛡️ SÉCURITÉ PRODUCTION
+# ============================================
+
+if not DEBUG:
+    # HTTPS obligatoire sur Render
+    SECURE_SSL_REDIRECT = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    
+    # Cookies sécurisés
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    
+    # Headers sécurité
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    
+    # Protection XSS
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    
+    # Referrer Policy
+    SECURE_REFERRER_POLICY = 'same-origin'
